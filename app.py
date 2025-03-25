@@ -240,4 +240,4 @@ def delete_user(user_id):
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=3354)
+    app.run(debug=True, port=3355)
