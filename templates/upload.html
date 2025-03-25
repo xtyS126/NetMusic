@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2>上传音乐</h2>
+    <form method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <input type="file" class="form-control" name="file" accept=".mp3">
+        </div>
+        <button type="submit" class="btn btn-primary">上传</button>
+    </form>
+    
+    {% if upload_info %}
+    <div class="mt-4">
+        <h4>最新上传：</h4>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ upload_info.filename }}</h5>
+                <p class="card-text">
+                    时长：{{ upload_info.duration }}秒<br>
+                    <a href="{{ upload_info.url }}" class="btn btn-success">立即播放</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# 移除登录状态显示 #}
+{# {% if current_user.is_authenticated %}
+<div class="mt-4 alert alert-info">
+    已登录用户：{{ current_user.username }}
+</div>
+{% endif %} #}
+</div>
+{% endblock %}

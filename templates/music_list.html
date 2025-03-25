@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">音乐列表</h2>
+
+    <!-- 搜索框 -->
+    <form method="get" action="{{ url_for('music_list') }}" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="搜索音乐..." value="{{ search_query }}">
+            <button type="submit" class="btn btn-primary">搜索</button>
+        </div>
+    </form>
+
+    <!-- 音乐列表 -->
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>文件名</th>
+                <th>上传时间</th>
+                <th>时长</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for music in musics %}
+            <tr>
+                <td>{{ music.original_name }}</td>
+                <td>{{ music.upload_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ music.duration }}秒</td>
+                <td>
+                    <a href="{{ url_for('play', filename=music.stored_name) }}" class="btn btn-sm btn-success">播放</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="text-center">没有找到音乐文件</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 分页导航 -->
+    {% if pagination.pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <!-- 上一页按钮 -->
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('music_list', page=pagination.prev_num, q=search_query) }}">
+                    上一页
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">上一页</span>
+            </li>
+            {% endif %}
+
+            <!-- 页码按钮 -->
+            {% for page_num in pagination.iter_pages() %}
+                {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('music_list', page=page_num, q=search_query) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            <!-- 下一页按钮 -->
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('music_list', page=pagination.next_num, q=search_query) }}">
+                    下一页
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">下一页</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
