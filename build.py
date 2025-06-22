@@ -6,8 +6,8 @@ if __name__ == '__main__':
     opts = [
         'app.py',
         '--onefile',
-        '--add-data', 'templates;templates',  # Windows用分号
-        '--add-data', 'config.py;.',         # 添加配置文件
+        '--add-data', 'templates;templates',
+        '--add-data', 'config.py;.',
         '--hidden-import=flask_sqlalchemy',
         '--hidden-import=flask_login',
         '--hidden-import=wtforms',

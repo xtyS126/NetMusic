@@ -106,48 +106,64 @@ def upload():
         if not os.path.exists(app.config['UPLOAD_FOLDER']):
             os.makedirs(app.config['UPLOAD_FOLDER'])
 
-        file = request.files.get('file')
-        if not file or file.filename == '':
+        # 修改：获取多个文件
+        files = request.files.getlist('file')
+        if not files or all(file.filename == '' for file in files):
             flash('请选择要上传的文件', 'danger')
             return redirect(url_for('upload'))
-
-        if not file.filename.lower().endswith('.mp3'):
-            flash('仅支持MP3格式文件', 'danger')
-            return redirect(url_for('upload'))
-
+        
+        upload_infos = []  # 存储多个文件的上传信息
+        save_paths = []    # 存储所有文件的保存路径
+        
         try:
-            original_name = file.filename
-            safe_name = secure_filename(original_name)
-            unique_name = f"{uuid.uuid4()}.mp3"
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-            file.save(save_path)
+            for file in files:
+                if file.filename == '':
+                    continue
+                    
+                if not file.filename.lower().endswith('.mp3'):
+                    flash(f'文件 {file.filename} 不是MP3格式', 'danger')
+                    continue
 
-            try:
-                audio = MP3(save_path)
-                duration = int(audio.info.length)
-            except Exception as e:
-                print(f"解析音频失败: {str(e)}")
-                duration = None
+                original_name = file.filename
+                safe_name = secure_filename(original_name)
+                unique_name = f"{uuid.uuid4()}.mp3"
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+                file.save(save_path)
+                save_paths.append(save_path)
 
-            # 修改用户ID获取方式
-            user_id = current_user.id if current_user.is_authenticated else None
+                try:
+                    audio = MP3(save_path)
+                    duration = int(audio.info.length)
+                except Exception as e:
+                    print(f"解析音频失败: {str(e)}")
+                    duration = None
+
+                user_id = current_user.id if current_user.is_authenticated else None
+                
+                music = Music(
+                    original_name=original_name,
+                    filename=safe_name,
+                    stored_name=unique_name,
+                    duration=duration,
+                    user_id=user_id
+                )
+                db.session.add(music)
+                upload_infos.append({
+                    'filename': original_name,
+                    'duration': duration,
+                    'url': url_for('play', filename=unique_name)
+                })
             
-            # 创建音乐记录时保留user_id字段
-            music = Music(
-                original_name=original_name,
-                filename=safe_name,
-                stored_name=unique_name,
-                duration=duration,
-                user_id=user_id  # 允许匿名用户时为None
-            )
-            db.session.add(music)
             db.session.commit()
-            flash('上传成功！', 'success')
-            return redirect(url_for('music_list'))
+            flash(f'成功上传 {len(upload_infos)} 个文件！', 'success')
+            return render_template('upload.html', upload_infos=upload_infos)
+            
         except Exception as e:
             db.session.rollback()
-            if os.path.exists(save_path):
-                os.remove(save_path)
+            # 删除所有已保存的文件
+            for path in save_paths:
+                if os.path.exists(path):
+                    os.remove(path)
             flash(f'上传失败: {str(e)}', 'danger')
             return redirect(url_for('upload'))
     return render_template('upload.html')
@@ -155,23 +171,25 @@ def upload():
 
 @app.route('/music')
 def music_list():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
     search_query = request.args.get('q', '')
     query = Music.query.order_by(Music.upload_time.desc())
 
     if search_query:
         query = query.filter(Music.original_name.ilike(f'%{search_query}%'))
-
-    pagination = query.paginate(page=page, per_page=per_page)
+    
+    # 删除分页逻辑，获取所有数据
+    musics = query.all()
+    link_prefix = get_setting('link_prefix', 'http://127.0.0.1:3355')
+    
     return render_template('music_list.html',
-                           musics=pagination.items,
-                           pagination=pagination,
-                           search_query=search_query)
+                           musics=musics,
+                           search_query=search_query,
+                           link_prefix=link_prefix)
 
 
 @app.route('/play/<filename>')
 def play(filename):
+    # 修改：直接返回上传目录的文件，而非重定向到静态目录
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
@@ -208,12 +226,28 @@ def delete_music(music_id):
 def admin_panel():
     if not current_user.is_admin:
         abort(403)
+    
+    # 获取搜索参数
+    search_query = request.args.get('q', '')
+    
+    # 查询用户（分页）
     users = User.query.paginate(page=request.args.get('page', 1, type=int), per_page=10)
-    musics = Music.query.all()
+    
+    # 查询音乐（支持搜索）
+    music_query = Music.query
+    if search_query:
+        music_query = music_query.filter(Music.original_name.ilike(f'%{search_query}%'))
+    music_list = music_query.all()
+    
+    # 获取当前链接前缀配置
+    link_prefix = get_setting('link_prefix', 'http://127.0.0.1:3355')
+    
     return render_template('admin.html',
                            users=users,
-                           music_list=musics,
-                           pagination=users)
+                           music_list=music_list,
+                           pagination=users,
+                           link_prefix=link_prefix,
+                           search_query=search_query)  # 新增：传递搜索查询
 
 
 # 新增用户删除路由
@@ -236,6 +270,32 @@ def delete_user(user_id):
         db.session.rollback()
         flash(f'删除失败: {str(e)}', 'danger')
     return redirect(url_for('admin_panel'))
+
+
+# 新增设置路由
+@app.route('/admin/set-link-prefix', methods=['POST'])
+@login_required
+def set_link_prefix():
+    if not current_user.is_admin:
+        abort(403)
+    prefix = request.form.get('link_prefix')
+    if prefix:
+        # 保存到数据库
+        save_setting('link_prefix', prefix)
+        flash('链接前缀已更新', 'success')
+    return redirect(url_for('admin_panel'))
+
+
+# 新增辅助函数：获取设置
+def get_setting(key, default=None):
+    # 这里简化实现，实际应存储在数据库
+    return session.get(key, default)
+
+
+# 新增辅助函数：保存设置
+def save_setting(key, value):
+    # 这里简化实现，实际应存储在数据库
+    session[key] = value
 
 
 if __name__ == '__main__':

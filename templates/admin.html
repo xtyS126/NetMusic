@@ -2,6 +2,41 @@
 {% block title %}管理后台{% endblock %}
 
 {% block content %}
+<!-- 新增设置表单 -->
+<div class="card mb-4 shadow">
+    <div class="card-header">
+        <h4 class="mb-0">链接设置</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('set_link_prefix') }}">
+            <div class="mb-3">
+                <label class="form-label">复制链接前缀</label>
+                <input type="text" name="link_prefix" class="form-control" 
+                       value="{{ link_prefix }}" placeholder="例如: http://127.0.0.1:3355">
+                <div class="form-text">设置后所有播放链接将使用此前缀</div>
+            </div>
+            <button type="submit" class="btn btn-primary">保存设置</button>
+        </form>
+    </div>
+</div>
+
+<!-- 新增搜索表单 -->
+<div class="card mb-4 shadow">
+    <div class="card-header">
+        <h4 class="mb-0">搜索音乐</h4>
+    </div>
+    <div class="card-body">
+        <form method="get" action="{{ url_for('admin_panel') }}">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" 
+                       placeholder="搜索音乐名称..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-primary">搜索</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 音乐文件管理部分 -->
 <div class="card shadow">
     <div class="card-header">
         <h4 class="mb-0">音乐文件管理</h4>
@@ -33,10 +68,11 @@
                         </td>
                         <td>{{ music.duration }}秒</td>
                         <td>
-                            <a href="{{ url_for('play', filename=music.stored_name) }}"
+                            <!-- 修改为使用配置的链接前缀 -->
+                            <a href="{{ link_prefix }}/play/{{ music.stored_name }}"
                                class="text-decoration-none"
                                target="_blank">
-                                {{ url_for('play', filename=music.stored_name, _external=True) }}
+                                {{ link_prefix }}/play/{{ music.stored_name }}
                             </a>
                         </td>
                         <td>

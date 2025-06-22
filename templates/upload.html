@@ -4,23 +4,27 @@
     <h2>上传音乐</h2>
     <form method="post" enctype="multipart/form-data">
         <div class="mb-3">
-            <input type="file" class="form-control" name="file" accept=".mp3">
+            <!-- 修改：添加 multiple 属性支持多文件选择 -->
+            <input type="file" class="form-control" name="file" accept=".mp3" multiple>
         </div>
         <button type="submit" class="btn btn-primary">上传</button>
     </form>
     
-    {% if upload_info %}
+    {% if upload_infos %}
     <div class="mt-4">
         <h4>最新上传：</h4>
-        <div class="card">
+        <!-- 修改：循环显示多个上传文件 -->
+        {% for info in upload_infos %}
+        <div class="card mb-2">
             <div class="card-body">
-                <h5 class="card-title">{{ upload_info.filename }}</h5>
+                <h5 class="card-title">{{ info.filename }}</h5>
                 <p class="card-text">
-                    时长：{{ upload_info.duration }}秒<br>
-                    <a href="{{ upload_info.url }}" class="btn btn-success">立即播放</a>
+                    时长：{{ info.duration }}秒<br>
+                    <a href="{{ info.url }}" class="btn btn-success">立即播放</a>
                 </p>
             </div>
         </div>
+        {% endfor %}
     </div>
     {% endif %}
 </div>
